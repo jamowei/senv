@@ -4,17 +4,16 @@ import (
 	"flag"
 	"strings"
 	"os"
-	"net/http"
 	"fmt"
-	"encoding/json"
+	"github.com/jamowei/senv/senv"
 )
 
 const (
-	host_default string = "127.0.0.1"
-	port_default string = "8888"
-	name_default string = "application"
+	host_default    string = "127.0.0.1"
+	port_default    string = "8888"
+	name_default    string = "application"
 	profile_default string = "default"
-	label_default string = "master"
+	label_default   string = "master"
 )
 
 var (
@@ -25,54 +24,16 @@ var (
 	label   string
 )
 
-type Config struct {
-	Name string
-	Profiles []string
-	Label string
-	Version string
-	State string
-	PropertySources []Sources
-}
-
-type Sources struct {
-	Name string
-	Source map[string]string
-}
-
 func main() {
 	params()
-	conf := new(Config)
-	if err := conf.recieve(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-	} else {
-		conf.process()
+	cfg := senv.NewConfig(host, port, name, profile, label,
+		&EnvKeyFormatter{"_", true},
+		&EnvValFormatter{})
+	cfg.Fetch()
+	cfg.Process()
+	for k, v := range cfg.Properties {
+		fmt.Println(k, "=", v)
 	}
-}
-
-func (config *Config) process() {
-	if config.PropertySources != nil {
-		for _, prop := range config.PropertySources {
-			for key, val := range prop.Source {
-				println(prop.Name, key, val)
-			}
-		}
-	}
-}
-
-func (config *Config) recieve() (err error) {
-	url := fmt.Sprintf("http://%s:%s/%s/%s/%s", host, port, name, profile, label)
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	if resp.Body != nil {
-		defer resp.Body.Close()
-		err := json.NewDecoder(resp.Body).Decode(config)
-		if err != nil {
-			return err
-		}
-	}
-	return
 }
 
 func params() {
