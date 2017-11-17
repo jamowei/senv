@@ -18,15 +18,15 @@ type ValReplacer interface {
 
 type Config struct {
 	Host, Port, Name, Profile, Label string
-	KeyFormatter Formatter
-	ValFormatter Formatter
+	KeyFormatter func(string) string
+	ValFormatter func(string) string
 	ValReplacer ValReplacer
 	enviroment  *enviroment
 	Properties  map[string]string
 }
 
 func NewConfig(host string, port string, name string, profile string, label string,
-	keyFormatter Formatter, valFormatter Formatter) *Config {
+	keyFormatter func(string) string, valFormatter func(string) string) *Config {
 	return &Config{host, port, name, profile, label,
 		keyFormatter,
 		valFormatter,
@@ -75,14 +75,8 @@ func (cfg *Config) Process() error {
 			if cfg.KeyFormatter != nil && cfg.ValFormatter != nil {
 				formattedProps := make(map[string]string)
 				for key, val := range replacedProperties {
-					nKey, err := cfg.KeyFormatter.Format(key)
-					if err != nil {
-						return err
-					}
-					nVal, err := cfg.ValFormatter.Format(val)
-					if err != nil {
-						return err
-					}
+					nKey := cfg.KeyFormatter(key)
+					nVal := cfg.ValFormatter(val)
 					formattedProps[nKey] = nVal
 				}
 				cfg.Properties = formattedProps

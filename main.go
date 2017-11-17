@@ -26,14 +26,24 @@ var (
 
 func main() {
 	params()
-	cfg := senv.NewConfig(host, port, name, profile, label,
-		&EnvKeyFormatter{"_", true},
-		&EnvValFormatter{})
+	cfg := senv.NewConfig(host, port, name, profile, label, formatKey, formatVal)
 	cfg.Fetch()
 	cfg.Process()
 	for k, v := range cfg.Properties {
 		fmt.Println(k, "=", v)
 	}
+}
+
+func formatKey(in string) (out string) {
+	out = strings.Replace(in, ".", "_", -1)
+	out = strings.ToUpper(out)
+	return
+}
+
+func formatVal(s string) (out string) {
+	out = strings.Replace(s, "\r\n", "", -1)
+	out = strings.Replace(out, "\n", "", -1)
+	return
 }
 
 func params() {

@@ -102,7 +102,7 @@ func TestConfig(t *testing.T) {
 	defer stopServer()
 	time.Sleep(1 * time.Second)
 
-	conf := NewConfig(host, port, name, profile, label, &EnvKeyFormatter{"_", true}, &EnvValFormatter{})
+	conf := NewConfig(host, port, name, profile, label, formatKey, formatVal)
 	if err := conf.Fetch(); err != nil {
 		t.Fatalf("TestConfig: %s", err)
 	}
@@ -130,24 +130,14 @@ func assertEqual(t *testing.T, a interface{}, b interface{}) {
 	t.Fatal(fmt.Sprintf("%v != %v", a, b))
 }
 
-
-type EnvKeyFormatter struct {
-	sep       string
-	upperCase bool
+func formatKey(in string) (out string) {
+	out = strings.Replace(in, ".", "_", -1)
+	out = strings.ToUpper(out)
+	return
 }
 
-func (ekf *EnvKeyFormatter) Format(in string) (string, error) {
-	out := strings.Replace(in, ".", ekf.sep, -1)
-	if ekf.upperCase {
-		out = strings.ToUpper(out)
-	}
-	return out, nil
-}
-
-type EnvValFormatter struct {}
-
-func (evf *EnvValFormatter) Format(s string) (res string, err error) {
-	res = strings.Replace(s, "\r\n", "", -1)
-	res = strings.Replace(res, "\n", "", -1)
+func formatVal(s string) (out string) {
+	out = strings.Replace(s, "\r\n", "", -1)
+	out = strings.Replace(out, "\n", "", -1)
 	return
 }
