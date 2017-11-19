@@ -2,7 +2,7 @@ language: go
 
 go:
   - 1.x
-install:
+before_install:
   - go get github.com/mattn/goveralls
 script:
   - $HOME/gopath/bin/goveralls -service=travis-ci
