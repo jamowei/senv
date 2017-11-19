@@ -1,9 +1,9 @@
 package senv
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"encoding/json"
 	"os"
 	"strings"
 )
@@ -13,21 +13,21 @@ type Formatter interface {
 }
 
 type ValReplacer interface {
-	Replace(map[string]string, map[string]string) (error)
+	Replace(map[string]string, map[string]string) error
 }
 
 type Config struct {
 	Host, Port, Name, Profile, Label string
-	KeyFormatter func(string) string
-	ValFormatter func(string) string
-	ValReplacer ValReplacer
-	enviroment  *enviroment
-	Properties  map[string]string
+	KeyFormatter                     func(string) string
+	ValFormatter                     func(string) string
+	ValReplacer                      ValReplacer
+	enviroment                       *enviroment
+	Properties                       map[string]string
 }
 
-func NewConfig(host string, port string, name string, profile string, label string,
+func NewConfig(host string, port string, name string, profiles []string, label string,
 	keyFormatter func(string) string, valFormatter func(string) string) *Config {
-	return &Config{host, port, name, profile, label,
+	return &Config{host, port, name, strings.Join(profiles, ","), label,
 		keyFormatter,
 		valFormatter,
 		&StringValReplacer{"${", "}", true},
@@ -37,7 +37,7 @@ func NewConfig(host string, port string, name string, profile string, label stri
 func (cfg *Config) Fetch() error {
 	env := new(enviroment)
 	url := fmt.Sprintf("http://%s:%s/%s/%s/%s", cfg.Host, cfg.Port, cfg.Name, cfg.Profile, cfg.Label)
-	fmt.Fprintln(os.Stderr,"Fetching config from server at:", url)
+	fmt.Fprintln(os.Stderr, "Fetching config from server at:", url)
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
@@ -48,14 +48,14 @@ func (cfg *Config) Fetch() error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(os.Stderr,"Located environment: name=%#v, profiles=%v, label=%#v, version=%#v, state=%#v\n",
+		fmt.Fprintf(os.Stderr, "Located environment: name=%#v, profiles=%v, label=%#v, version=%#v, state=%#v\n",
 			env.Name, env.Profiles, env.Label, env.Version, env.State)
 		cfg.enviroment = env
 	}
 	return nil
 }
 
-func (cfg *Config) Process() error {
+func (cfg *Config) Process(verbose bool) error {
 	env := cfg.enviroment
 	if env != nil && env.PropertySources != nil {
 		//merge propertySources into one map
@@ -70,7 +70,6 @@ func (cfg *Config) Process() error {
 			}
 			cfg.Properties = replacedProperties
 
-
 			//format keys & values
 			if cfg.KeyFormatter != nil && cfg.ValFormatter != nil {
 				formattedProps := make(map[string]string)
@@ -78,6 +77,9 @@ func (cfg *Config) Process() error {
 					nKey := cfg.KeyFormatter(key)
 					nVal := cfg.ValFormatter(val)
 					formattedProps[nKey] = nVal
+					if verbose {
+						fmt.Println(nKey, "=", nVal)
+					}
 				}
 				cfg.Properties = formattedProps
 			}
@@ -90,7 +92,7 @@ func (cfg *Config) Process() error {
 // more specific values with the same key
 func mergeProps(pSources []propertySource) (merged map[string]string) {
 	merged = make(map[string]string)
-	for i := len(pSources)-1; i >= 0; i-- {
+	for i := len(pSources) - 1; i >= 0; i-- {
 		data := pSources[i]
 		// merge all propertySources to one map
 		for key, val := range data.Source.content {
@@ -101,9 +103,9 @@ func mergeProps(pSources []propertySource) (merged map[string]string) {
 }
 
 type StringValReplacer struct {
-	Opener       string
-	Closer       string
-	FailOnError  bool
+	Opener      string
+	Closer      string
+	FailOnError bool
 }
 
 func (rpl *StringValReplacer) Replace(in map[string]string, out map[string]string) error {

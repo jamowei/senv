@@ -14,12 +14,12 @@ const (
 	host    string = "127.0.0.1"
 	port    string = "9999"
 	name    string = "test"
-	profile string = "dev"
 	label   string = "master"
 )
 
-var jsonData string = fmt.Sprintf(
-	`{
+var profiles []string = []string{"dev","prod"}
+
+var jsonData string = `{
   "Name": "test",
   "Profiles": [
     "dev",
@@ -72,7 +72,7 @@ var jsonData string = fmt.Sprintf(
       }
     }
   ]
-}`, name, profile, label)
+}`
 
 var server *http.Server
 
@@ -102,7 +102,7 @@ func TestConfig(t *testing.T) {
 	defer stopServer()
 	time.Sleep(1 * time.Second)
 
-	conf := NewConfig(host, port, name, profile, label, formatKey, formatVal)
+	conf := NewConfig(host, port, name, profiles, label, formatKey, formatVal)
 	if err := conf.Fetch(); err != nil {
 		t.Fatalf("TestConfig: %s", err)
 	}
@@ -110,10 +110,11 @@ func TestConfig(t *testing.T) {
 	env := conf.enviroment;
 	assertEqual(t, env.Name, name)
 	assertEqual(t, env.Label, label)
-	assertEqual(t, env.Profiles[0], profile)
+	assertEqual(t, env.Profiles[0], profiles[0])
+	assertEqual(t, env.Profiles[1], profiles[1])
 	assertEqual(t, len(env.PropertySources), 2)
 
-	if err := conf.Process(); err != nil {
+	if err := conf.Process(false); err != nil {
 		t.Fatalf("TestConfig: %s", err)
 	}
 
