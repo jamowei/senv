@@ -21,6 +21,4 @@ archive:
 changelog:
   filters:
     exclude:
-      - '^doc:'
-      - '^typo:'
-      - '^!chan:'
+      - '^!clog:'

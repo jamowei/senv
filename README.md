@@ -5,14 +5,19 @@
 [![Build Status](https://travis-ci.org/jamowei/senv.svg?branch=master)](https://travis-ci.org/jamowei/senv)
 [![Coverage Status](https://coveralls.io/repos/github/jamowei/senv/badge.svg?branch=master)](https://coveralls.io/github/jamowei/senv?branch=master)
 
-A fast and light-weight spring-config-client written in Go.
-
-It receives properties from a spring cloud config server and makes them available via environment variables.
+A fast Spring cloud-config-client written in Go.
+ 
+It fetches properties from a Spring cloud-config-server
+and make them available via system environment variables
 For more information on spring cloud config take a look [here](https://cloud.spring.io/spring-cloud-config/).
 
 # Install
 
+You can get the binary with Go:
+
 `> go get -u github.com/jamowei/senv/senv`
+
+or download latest binary release from [here](https://github.com/jamowei/senv/releases).
 
 # Example
 
