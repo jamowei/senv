@@ -17,7 +17,7 @@ You can get the binary with Go:
 
 `> go get -u github.com/jamowei/senv/senv`
 
-or download latest binary release from [here](https://github.com/jamowei/senv/releases).
+or download latest binary release from [here](https://github.com/jamowei/senv/releases/latest).
 
 # Example
 
