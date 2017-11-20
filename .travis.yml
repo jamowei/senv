@@ -4,6 +4,7 @@ go:
   - 1.x
 before_install:
   - go get github.com/mattn/goveralls
+  - go get github.com/inconshreveable/mousetrap
 script:
   - $HOME/gopath/bin/goveralls -service=travis-ci
 after_success:
