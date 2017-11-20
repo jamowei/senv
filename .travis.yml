@@ -6,3 +6,5 @@ before_install:
   - go get github.com/mattn/goveralls
 script:
   - $HOME/gopath/bin/goveralls -service=travis-ci
+after_success:
+  - test -n "$TRAVIS_TAG" && curl -sL https://git.io/goreleaser | bash

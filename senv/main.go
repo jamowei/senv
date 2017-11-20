@@ -13,6 +13,9 @@ const hostDefault, portDefault, nameDefault, labelDefault string = "127.0.0.1", 
 
 var profile_default []string = []string{"default"}
 
+var version = "0.0.0"
+var date = "2017"
+
 var (
 	host, port, name, label string
 	profiles                []string
@@ -28,9 +31,12 @@ func main() {
 var rootCmd = &cobra.Command{
 	Use:   "senv",
 	Short: "Senv is a very fast config client for the spring cloud config server",
-	Long: `A fast spring config client written in Go for receiving properties
-from a spring cloud config server and
-make them available via system environment variables`,
+	Long: fmt.Sprintf(
+		`Senv %s                        © %s Jan Weidenhaupt
+
+ A fast Spring cloud-config-client written in Go
+ for fetching properties from a Spring cloud-config-server
+ and make them available via system environment variables`, version, date[:4]),
 	Args: cobra.NoArgs,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		if name == nameDefault {
