@@ -32,11 +32,11 @@ var rootCmd = &cobra.Command{
 	Use:   "senv",
 	Short: "Senv is a very fast config client for the spring cloud config server",
 	Long: fmt.Sprintf(
-		`Senv %s                        © %s Jan Weidenhaupt
+		`v%s                             © %s Jan Weidenhaupt
 
- A fast Spring cloud-config-client written in Go
- for fetching properties from a Spring cloud-config-server
- and make them available via system environment variables`, version, date[:4]),
+Senv is a fast Spring cloud-config-client written in Go
+for fetching properties from a Spring cloud-config-server
+and make them available via system environment variables`, version, date[:4]),
 	Args: cobra.NoArgs,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		if name == nameDefault {
