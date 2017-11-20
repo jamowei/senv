@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-type enviroment struct {
+type environment struct {
 	Name            string           `json:"Name"`
 	Profiles        []string         `json:"Profiles"`
 	Label           string           `json:"Label"`

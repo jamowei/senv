@@ -8,23 +8,36 @@ import (
 	"strings"
 )
 
-type Formatter interface {
-	Format(string) (string, error)
-}
-
+// ValReplacer replaces all variables given in the values
+// of the first map with the appropriate values of the specified key
+// and stores them in the second map.
+//
+// Example with StringValReplacer:
+//
+//   in := make(map[string]string)
+//   out := make(map[string]string)
+//   in["foo"] = "bar ${bar}"
+//   in["bar"] = "bars"
+//   repl := &StringValReplacer{"${", "}", true}
+//   repl.Replace(in, out)
+//   fmt.Println(out["foo"])   //prints: bar bars
 type ValReplacer interface {
 	Replace(map[string]string, map[string]string) error
 }
 
+// Config hold the information which is needed to receive the
+// json data from the spring config server and parse and transform them correctly.
 type Config struct {
 	Host, Port, Name, Profile, Label string
 	KeyFormatter                     func(string) string
 	ValFormatter                     func(string) string
 	ValReplacer                      ValReplacer
-	enviroment                       *enviroment
+	environment                      *environment
 	Properties                       map[string]string
 }
 
+// NewConfig returns a new Config as pointer value with a default ValReplacer for
+// spring cloud config.
 func NewConfig(host string, port string, name string, profiles []string, label string,
 	keyFormatter func(string) string, valFormatter func(string) string) *Config {
 	return &Config{host, port, name, strings.Join(profiles, ","), label,
@@ -34,8 +47,9 @@ func NewConfig(host string, port string, name string, profiles []string, label s
 		nil, nil}
 }
 
+// Fetch fetches the json data from the spring config server
 func (cfg *Config) Fetch() error {
-	env := new(enviroment)
+	env := new(environment)
 	url := fmt.Sprintf("http://%s:%s/%s/%s/%s", cfg.Host, cfg.Port, cfg.Name, cfg.Profile, cfg.Label)
 	fmt.Fprintln(os.Stderr, "Fetching config from server at:", url)
 	resp, err := http.Get(url)
@@ -50,13 +64,15 @@ func (cfg *Config) Fetch() error {
 		}
 		fmt.Fprintf(os.Stderr, "Located environment: name=%#v, profiles=%v, label=%#v, version=%#v, state=%#v\n",
 			env.Name, env.Profiles, env.Label, env.Version, env.State)
-		cfg.enviroment = env
+		cfg.environment = env
 	}
 	return nil
 }
 
+// Process use given ValReplacer and formatter functions to process
+// the fetched json data and must be called after Fetch
 func (cfg *Config) Process(verbose bool) error {
-	env := cfg.enviroment
+	env := cfg.environment
 	if env != nil && env.PropertySources != nil {
 		//merge propertySources into one map
 		mergedProperties := mergeProps(env.PropertySources)
@@ -102,12 +118,18 @@ func mergeProps(pSources []propertySource) (merged map[string]string) {
 	return
 }
 
+// StringValReplacer needs the opening and closing string
+// for detecting a variables that must be replaced.
+// Optionally it can not fail on unknown variables which have no appropriate
+// key in the map.
 type StringValReplacer struct {
 	Opener      string
 	Closer      string
 	FailOnError bool
 }
 
+// Replace replaces all variables with the defined opening and
+// closing strings with the value of the key.
 func (rpl *StringValReplacer) Replace(in map[string]string, out map[string]string) error {
 	var err error
 	for key, val := range in {

@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const host_default, port_default, name_default, label_default string = "127.0.0.1", "8888", "application", "master"
+const hostDefault, portDefault, nameDefault, labelDefault string = "127.0.0.1", "8888", "application", "master"
 
 var profile_default []string = []string{"default"}
 
@@ -20,20 +20,20 @@ var (
 )
 
 func main() {
-	if err := RootCmd.Execute(); err != nil {
+	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }
 
-var RootCmd = &cobra.Command{
+var rootCmd = &cobra.Command{
 	Use:   "senv",
 	Short: "Senv is a very fast config client for the spring cloud config server",
-	Long: `A fast spring config client written in Go for recieving properties
+	Long: `A fast spring config client written in Go for receiving properties
 from a spring cloud config server and
 make them available via system environment variables`,
 	Args: cobra.NoArgs,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		if name == name_default {
+		if name == nameDefault {
 			fmt.Fprintln(os.Stderr, "Warning: no application name given, using default 'application'")
 		}
 	},
@@ -45,21 +45,18 @@ make them available via system environment variables`,
 		if err := cfg.Process(verbose); err != nil {
 			return err
 		}
-		if err := setEnvVars(cfg.Properties, override); err != nil {
-			return err
-		}
-		return nil
+		return setEnvVars(cfg.Properties, override)
 	},
 }
 
 func init() {
-	RootCmd.PersistentFlags().StringVar(&host, "host", host_default, "config-server host")
-	RootCmd.PersistentFlags().StringVar(&port, "port", port_default, "config-server port")
-	RootCmd.PersistentFlags().StringVarP(&name, "name", "n", name_default, "spring.application.name")
-	RootCmd.PersistentFlags().StringSliceVarP(&profiles, "profiles", "p", profile_default, "spring.active.profiles")
-	RootCmd.PersistentFlags().StringVarP(&label, "label", "l", label_default, "config-repo label to be used")
-	RootCmd.PersistentFlags().BoolVarP(&override, "override", "o", false, "overrides existing environment variables")
-	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "show all received properties")
+	rootCmd.PersistentFlags().StringVar(&host, "host", hostDefault, "config-server host")
+	rootCmd.PersistentFlags().StringVar(&port, "port", portDefault, "config-server port")
+	rootCmd.PersistentFlags().StringVarP(&name, "name", "n", nameDefault, "spring.application.name")
+	rootCmd.PersistentFlags().StringSliceVarP(&profiles, "profiles", "p", profile_default, "spring.active.profiles")
+	rootCmd.PersistentFlags().StringVarP(&label, "label", "l", labelDefault, "config-repo label to be used")
+	rootCmd.PersistentFlags().BoolVarP(&override, "override", "o", false, "overrides existing environment variables")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "show all received properties")
 }
 
 func setEnvVars(props map[string]string, override bool) error {

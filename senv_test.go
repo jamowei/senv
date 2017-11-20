@@ -1,23 +1,23 @@
 package senv
 
 import (
-	"testing"
-	"net/http"
+	"context"
 	"fmt"
 	"io"
-	"time"
-	"context"
+	"net/http"
 	"strings"
+	"testing"
+	"time"
 )
 
 const (
-	host    string = "127.0.0.1"
-	port    string = "9999"
-	name    string = "test"
-	label   string = "master"
+	host  string = "127.0.0.1"
+	port  string = "9999"
+	name  string = "test"
+	label string = "master"
 )
 
-var profiles []string = []string{"dev","prod"}
+var profiles []string = []string{"dev", "prod"}
 
 var jsonData string = `{
   "Name": "test",
@@ -107,7 +107,7 @@ func TestConfig(t *testing.T) {
 		t.Fatalf("TestConfig: %s", err)
 	}
 
-	env := conf.enviroment;
+	env := conf.environment
 	assertEqual(t, env.Name, name)
 	assertEqual(t, env.Label, label)
 	assertEqual(t, env.Profiles[0], profiles[0])
