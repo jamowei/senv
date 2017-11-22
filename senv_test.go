@@ -22,6 +22,8 @@ const (
 
 var profiles []string = []string{"dev", "prod"}
 
+var running bool = false
+
 var jsonData string = `{
   "Name": "test",
   "Profiles": [
@@ -102,44 +104,51 @@ var jsonDataWrong string = `{
 var server *http.Server
 
 func startServer() {
-	server = &http.Server{Addr: ":" + port}
+	if running == false {
+		running = true
 
-	http.HandleFunc(fmt.Sprintf("/%s/%s/%s", name, strings.Join(profiles, ","), label), func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, jsonData)
-	})
+		server = &http.Server{Addr: ":" + port}
 
-	http.HandleFunc(fmt.Sprintf("/%s/%s/%s", badjson, strings.Join(profiles, ","), label), func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, "this is no json")
-	})
+		http.HandleFunc(fmt.Sprintf("/%s/%s/%s", name, strings.Join(profiles, ","), label), func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, jsonData)
+		})
 
-	http.HandleFunc(fmt.Sprintf("/%s/%s/%s", badprops, strings.Join(profiles, ","), label), func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, jsonDataWrong)
-	})
+		http.HandleFunc(fmt.Sprintf("/%s/%s/%s", badjson, strings.Join(profiles, ","), label), func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, "this is no json")
+		})
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.NotFound(w, r)
-	})
+		http.HandleFunc(fmt.Sprintf("/%s/%s/%s", badprops, strings.Join(profiles, ","), label), func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, jsonDataWrong)
+		})
 
-	go func() {
-		server.ListenAndServe()
-	}()
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			http.NotFound(w, r)
+		})
+
+		go func() {
+			server.ListenAndServe()
+		}()
+	}
 }
 
 func stopServer() {
-	d := time.Now().Add(1 * time.Second)
-	ctx, cancel := context.WithDeadline(context.Background(), d)
-	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
-		panic(err) // failure/timeout shutting down the server gracefully
+	if running == true {
+		d := time.Now().Add(1 * time.Second)
+		ctx, cancel := context.WithDeadline(context.Background(), d)
+		defer cancel()
+		if err := server.Shutdown(ctx); err != nil {
+			panic(err) // failure/timeout shutting down the server gracefully
+		}
+		running = false
 	}
 }
 
 func TestConfig(t *testing.T) {
 	startServer()
-	defer stopServer()
+
 	time.Sleep(1 * time.Second)
 
 	conf := NewConfig(host, port, name, profiles, label, formatKey, formatVal)
