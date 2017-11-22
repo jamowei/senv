@@ -11,13 +11,13 @@ import (
 )
 
 const (
-	host     string = "127.0.0.1"
-	port     string = "9999"
-	name     string = "test"
-	badjson  string = "badjson"
-	badprops string = "badprops"
-	notfound string = "notfound"
-	label    string = "master"
+	host      string = "127.0.0.1"
+	port      string = "9999"
+	wrongport string = "8888"
+	name      string = "test"
+	badjson   string = "badjson"
+	badprops  string = "badprops"
+	label     string = "master"
 )
 
 var profiles []string = []string{"dev", "prod"}
@@ -124,10 +124,6 @@ func startServer() {
 			io.WriteString(w, jsonDataWrong)
 		})
 
-		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			http.NotFound(w, r)
-		})
-
 		go func() {
 			server.ListenAndServe()
 		}()
@@ -164,7 +160,7 @@ func TestConfig(t *testing.T) {
 	assertEqual(t, env.Profiles[1], profiles[1])
 	assertEqual(t, len(env.PropertySources), 2)
 
-	if err := conf.Process(false); err != nil {
+	if err := conf.Process(true); err != nil {
 		t.Fatalf("TestConfig: %s", err)
 	}
 
@@ -181,7 +177,7 @@ func TestFailures(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	cfg1 := NewConfig(host, port, badjson, profiles, label, formatKey, formatVal)
-	cfg2 := NewConfig(host, port, notfound, profiles, label, formatKey, formatVal)
+	cfg2 := NewConfig(host, wrongport, name, profiles, label, formatKey, formatVal)
 	cfg3 := NewConfig(host, port, badprops, profiles, label, formatKey, formatVal)
 
 	if err := cfg1.Fetch(); err == nil {
@@ -199,7 +195,7 @@ func TestFailures(t *testing.T) {
 	if err := cfg3.Fetch(); err != nil {
 		t.Fatal("TestFailure3: should fail on parsing properties")
 	} else {
-		if err := cfg3.Process(true); err == nil {
+		if err := cfg3.Process(false); err == nil {
 			t.Fatal("TestFailure3: should fail on parsing properties")
 		} else {
 			fmt.Printf("Expected error3: %#v\n", err)
