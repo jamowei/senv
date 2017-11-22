@@ -18,6 +18,7 @@ archive:
     darwin: mac
   files:
     - README.md
+    - LICENSE
 changelog:
   filters:
     exclude:
