@@ -98,8 +98,8 @@ then you can start your application *myapp* like the following:
 # ToDo's
 
 * static file support
-* vault support
 * https support with own ca
+* 100% code coverage
 * ...
 
 # Contributing
@@ -114,4 +114,4 @@ then you can start your application *myapp* like the following:
 
 # License
 
-Senv is released under the MIT license. See [LICENSE.txt](https://github.com/spf13/cobra/blob/master/LICENSE.txt)
+Senv is released under the MIT license. See [LICENSE](https://github.com/jamowei/senv/blob/master/LICENSE)
