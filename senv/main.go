@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
 	"github.com/jamowei/senv"
 	"github.com/spf13/cobra"
 )
@@ -84,7 +83,7 @@ func formatKey(in string) (out string) {
 }
 
 func formatVal(s string) (out string) {
-	out = strings.Replace(s, "\r\n", "", -1)
-	out = strings.Replace(out, "\n", "", -1)
+	out = strings.Replace(s, "\r\n", " ", -1)
+	out = strings.Replace(out, "\n", " ", -1)
 	return
 }
