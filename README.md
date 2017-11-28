@@ -15,7 +15,7 @@ For more information on spring cloud config take a look [here](https://cloud.spr
 
 You can get the binary with Go:
 
-`> go get -u github.com/jamowei/senv/cmd`
+`> go get -u github.com/jamowei/senv/senv`
 
 or download latest binary release from [here](https://github.com/jamowei/senv/releases/latest).
 

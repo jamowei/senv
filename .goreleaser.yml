@@ -1,5 +1,5 @@
 builds:
-  - main: ./cmd/main.go
+  - main: ./senv/main.go
     binary: senv
     goos:
       - windows
