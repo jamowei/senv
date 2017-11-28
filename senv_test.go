@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +19,7 @@ const (
 	name      string = "test"
 	badjson   string = "badjson"
 	badprops  string = "badprops"
+	file      string = "test.txt"
 	label     string = "master"
 )
 
@@ -101,6 +104,8 @@ var jsonDataWrong string = `{
   ]
 }`
 
+var plainData string = "this is a test!"
+
 var server *http.Server
 
 func startServer() {
@@ -122,6 +127,11 @@ func startServer() {
 		http.HandleFunc(fmt.Sprintf("/%s/%s/%s", badprops, strings.Join(profiles, ","), label), func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			io.WriteString(w, jsonDataWrong)
+		})
+
+		http.HandleFunc(fmt.Sprintf("/%s/%s/%s/%s", name, strings.Join(profiles, ","), label, file), func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain;charset=UTF-8")
+			io.WriteString(w, plainData)
 		})
 
 		go func() {
@@ -149,10 +159,8 @@ func TestConfig(t *testing.T) {
 
 	conf := NewConfig(host, port, name, profiles, label, formatKey, formatVal)
 
-	if err := conf.Fetch(); err != nil {
-		t.Fatalf("TestConfig: %s", err)
-	}
-
+	err := conf.Fetch(true)
+	check(t, err)
 	env := conf.environment
 	assertEqual(t, env.Name, name)
 	assertEqual(t, env.Label, label)
@@ -160,15 +168,23 @@ func TestConfig(t *testing.T) {
 	assertEqual(t, env.Profiles[1], profiles[1])
 	assertEqual(t, len(env.PropertySources), 2)
 
-	if err := conf.Process(true); err != nil {
-		t.Fatalf("TestConfig: %s", err)
-	}
-
+	err = conf.Process(true)
+	check(t, err)
 	props := conf.Properties
 	assertEqual(t, props["INVOICE"], "34843")
 	assertEqual(t, props["BILL-TO_GIVEN"], "Test")
 	assertEqual(t, props["SHIP-TO_ADDRESS_LINES"], "458 Walkman Dr. Suite #292 ")
 	assertEqual(t, props["TOTAL[1]"], "12342.23")
+
+	err = conf.FetchFile(file, true)
+	check(t, err)
+	err = conf.FetchFile(file, false)
+	check(t, err)
+	cnt, err := ioutil.ReadFile(file)
+	check(t, err)
+	assertEqual(t, string(cnt), plainData)
+	os.Remove(file)
+
 }
 
 func TestFailures(t *testing.T) {
@@ -180,27 +196,19 @@ func TestFailures(t *testing.T) {
 	cfg2 := NewConfig(host, wrongport, name, profiles, label, formatKey, formatVal)
 	cfg3 := NewConfig(host, port, badprops, profiles, label, formatKey, formatVal)
 
-	if err := cfg1.Fetch(); err == nil {
-		t.Fatal("TestFailure1: should fail on wrong json")
-	} else {
-		fmt.Printf("Expected error1: %#v\n", err)
-	}
+	err := cfg1.Fetch(false)
+	checkInverse(t, err)
 
-	if err := cfg2.Fetch(); err == nil {
-		t.Fatal("TestFailure2: should fail on wrong url")
-	} else {
-		fmt.Printf("Expected error2: %#v\n", err)
-	}
+	err = cfg2.Fetch(false)
+	checkInverse(t, err)
 
-	if err := cfg3.Fetch(); err != nil {
-		t.Fatal("TestFailure3: should fail on parsing properties")
-	} else {
-		if err := cfg3.Process(false); err == nil {
-			t.Fatal("TestFailure3: should fail on parsing properties")
-		} else {
-			fmt.Printf("Expected error3: %#v\n", err)
-		}
-	}
+	err = cfg2.FetchFile("test.txt", true)
+	checkInverse(t, err)
+
+	err = cfg3.Fetch(false)
+	check(t, err)
+	err = cfg3.Process(false)
+	checkInverse(t, err)
 
 }
 
@@ -210,6 +218,20 @@ func assertEqual(t *testing.T, a interface{}, b interface{}) {
 		return
 	}
 	t.Fatal(fmt.Sprintf("%v != %v", a, b))
+}
+
+func check(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(t.Name(), err)
+	}
+}
+
+func checkInverse(t *testing.T, err error) {
+	t.Helper()
+	if err == nil {
+		t.Fatal(t.Name(), "should fail, but didnt")
+	}
 }
 
 func formatKey(in string) (out string) {

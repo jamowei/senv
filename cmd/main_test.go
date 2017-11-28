@@ -37,6 +37,11 @@ func TestSetEnvVars(t *testing.T) {
 	assertEqual(t, data[key], os.Getenv(key))
 }
 
+func TestFormatter(t *testing.T) {
+	assertEqual(t, formatKey("foo.bar"), "FOO_BAR")
+	assertEqual(t, formatVal("foo\nbar\r\nbars"), "foo bar bars")
+}
+
 func assertEqual(t *testing.T, a interface{}, b interface{}) {
 	t.Helper()
 	if a == b {

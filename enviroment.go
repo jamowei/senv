@@ -39,9 +39,11 @@ func (src *source) UnmarshalJSON(b []byte) error {
 			src.content[k] = strconv.Itoa(val)
 		case float64:
 			src.content[k] = strconv.FormatFloat(float64(val), 'f', -1, 64)
-		default:
-			src.content[k] = ""
 		}
 	}
 	return nil
+}
+
+func (src source) MarshalJSON() ([]byte, error) {
+	return json.Marshal(src.content)
 }

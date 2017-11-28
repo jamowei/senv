@@ -1,8 +1,10 @@
 package senv
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -48,23 +50,59 @@ func NewConfig(host string, port string, name string, profiles []string, label s
 }
 
 // Fetch fetches the json data from the spring config server
-func (cfg *Config) Fetch() error {
-	env := new(environment)
+func (cfg *Config) Fetch(verbose bool) error {
+	env := &environment{}
 	url := fmt.Sprintf("http://%s:%s/%s/%s/%s", cfg.Host, cfg.Port, cfg.Name, cfg.Profile, cfg.Label)
 	fmt.Fprintln(os.Stderr, "Fetching config from server at:", url)
+
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
 	}
-	if resp.Body != nil {
-		defer resp.Body.Close()
-		err := json.NewDecoder(resp.Body).Decode(env)
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(env)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(os.Stderr, "Located environment: name=%#v, profiles=%v, label=%#v, version=%#v, state=%#v\n",
+		env.Name, env.Profiles, env.Label, env.Version, env.State)
+
+	if verbose {
+		jsonStr, _ := json.MarshalIndent(env, "", "    ")
+		fmt.Println(string(jsonStr))
+	}
+
+	cfg.environment = env
+	return nil
+}
+
+func (cfg *Config) FetchFile(filename string, print bool) error {
+	url := fmt.Sprintf("http://%s:%s/%s/%s/%s/%s", cfg.Host, cfg.Port, cfg.Name, cfg.Profile, cfg.Label, filename)
+	fmt.Fprintf(os.Stderr, "Fetching file \"%s\" from server at: %s\n", filename, url)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if print {
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(resp.Body)
+		fmt.Println(buf.String())
+	} else {
+		out, err := os.Create(filename)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(os.Stderr, "Located environment: name=%#v, profiles=%v, label=%#v, version=%#v, state=%#v\n",
-			env.Name, env.Profiles, env.Label, env.Version, env.State)
-		cfg.environment = env
+		defer out.Close()
+
+		_, err = io.Copy(out, resp.Body)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

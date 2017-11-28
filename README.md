@@ -15,7 +15,7 @@ For more information on spring cloud config take a look [here](https://cloud.spr
 
 You can get the binary with Go:
 
-`> go get -u github.com/jamowei/senv/senv`
+`> go get -u github.com/jamowei/senv/cmd`
 
 or download latest binary release from [here](https://github.com/jamowei/senv/releases/latest).
 
@@ -97,8 +97,8 @@ then you can start your application *myapp* like the following:
 ```
 # ToDo's
 
-* static file support
 * https support with own ca
+* customizable http header for vault and basic auth
 * 100% code coverage
 * ...
 
