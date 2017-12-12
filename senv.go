@@ -49,7 +49,8 @@ func NewConfig(host string, port string, name string, profiles []string, label s
 		nil, nil}
 }
 
-// Fetch fetches the json data from the spring config server
+// Fetch fetches the json data from the spring config server, see:
+// https://cloud.spring.io/spring-cloud-config/single/spring-cloud-config.html#_quick_start
 func (cfg *Config) Fetch(verbose bool) error {
 	env := &environment{}
 	url := fmt.Sprintf("http://%s:%s/%s/%s/%s", cfg.Host, cfg.Port, cfg.Name, cfg.Profile, cfg.Label)
@@ -78,6 +79,8 @@ func (cfg *Config) Fetch(verbose bool) error {
 	return nil
 }
 
+// FetchFile download a file from the spring config server, see:
+// https://cloud.spring.io/spring-cloud-config/single/spring-cloud-config.html#_serving_plain_text
 func (cfg *Config) FetchFile(filename string, print bool) error {
 	url := fmt.Sprintf("http://%s:%s/%s/%s/%s/%s", cfg.Host, cfg.Port, cfg.Name, cfg.Profile, cfg.Label, filename)
 	fmt.Fprintf(os.Stderr, "Fetching file \"%s\" from server at: %s\n", filename, url)
