@@ -13,11 +13,11 @@ For more information on spring cloud config take a look [here](https://cloud.spr
 
 # Install
 
-You can get the binary with Go:
+You can get the latest binary using Go:
 
 `> go get -u github.com/jamowei/senv/senv`
 
-or download latest binary release from [here](https://github.com/jamowei/senv/releases/latest).
+or download released binary from [here](https://github.com/jamowei/senv/releases/latest).
 
 # Example
 
@@ -54,10 +54,18 @@ file:
   output: ${workdir}/output.txt
 ```
 
+and you have a static file "conf.xml" with variables:
+```xml
+<configuration>
+  <user>${db.user}</user>
+  <pass>${db.password}</pass>
+</configuration>
+```
+
 then you can start your application *myapp* like the following:
 * with development settings:
     ```
-    > senv -n myapp -p dev \n
+    > senv env -n myapp -p dev \n
       Fetching config from server at: http://127.0.0.1:8888/myapp/dev/master
       Located environment: name="myapp", profiles=[dev], label="master", version=29374923859338549, state=""
     > echo "$DB_USER:$DB_PASSWORD"             // prints: admin:test123
@@ -66,11 +74,22 @@ then you can start your application *myapp* like the following:
     ```
 * with production settings:
     ```
-    > senv -n myapp -p prod \n
+    > senv env -n myapp -p prod \n
       Fetching config from server at: http://127.0.0.1:8888/myapp/prod/master
       Located environment: name="myapp", profiles=[prod], label="master", version=29374923859338549, state=""
     > echo "$DB_USER:$DB_PASSWORD"             // prints: admin:prod123
     > myapp -user $DB_USER -pass $DB_PASSWORD -in $FILE_INPUT -out $FILE_OUTPUT
+      ...
+    ```
+* getting the "conf.xml":
+    ```
+    > senv file -n myapp -p prod conf.xml \n
+      Fetching file "conf.xml" from server at: http://127.0.0.1:8888/myapp/prod/master/conf.xml
+    > cat conf.xml                          //prints: <configuration>
+                                                        <user>admin</user>
+                                                        <pass>prod123</pass>
+                                                      </configuration>
+    > myapp -conf conf.xml
       ...
     ```
     
@@ -78,22 +97,27 @@ then you can start your application *myapp* like the following:
 
 ```
   > senv --help 
-    A fast spring config client written in Go for recieving properties
-    from a spring cloud config server and
-    make them available via system environment variables
+    Senv is a fast native config-client for a
+    spring-cloud-config-server written in Go
     
     Usage:
-     senv [flags]
+      senv [command]
+    
+    Available Commands:
+      env         Fetches properties and sets them as environment variables
+      file        Receives static file(s)
+      help        Help about any command
     
     Flags:
-     -h, --help               help for senv
-         --host string        config-server host (default "127.0.0.1")
-     -l, --label string       config-repo label to be used (default "master")
-     -n, --name string        spring.application.name (default "application")
-     -o, --override           overrides existing environment variables
-         --port string        config-server port (default "8888")
-     -p, --profiles strings   spring.active.profiles (default [default])
-     -v, --verbose            show all received properties
+      -h, --help               help for senv
+          --host string        configserver host (default "127.0.0.1")
+      -l, --label string       config-repo label to be used (default "master")
+      -n, --name string        spring.application.name (default "application")
+          --port string        configserver port (default "8888")
+      -p, --profiles strings   spring.active.profiles (default [default])
+          --version            version for senv
+    
+    Use "senv [command] --help" for more information about a command.
 ```
 # ToDo's
 
