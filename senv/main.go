@@ -10,10 +10,11 @@ import (
 
 const hostDefault, portDefault, nameDefault, labelDefault string = "127.0.0.1", "8888", "application", "master"
 
-var profile_default []string = []string{"default"}
+var profileDefault = []string{"default"}
 
 var version = "0.0.0"
 var date = "2017"
+//var showVersion bool
 
 var (
 	host, port, name, label       string
@@ -30,30 +31,40 @@ func main() {
 var rootCmd = &cobra.Command{
 	Use:   "senv [command]",
 	Short: "A native config-client for the spring-cloud-config-server",
+	Version: "v"+version,
 	Long: fmt.Sprintf(
 		`v%s                             © %s Jan Weidenhaupt
 
 Senv is a fast native config-client for a
 spring-cloud-config-server written in Go`, version, date[:4]),
 	Args: cobra.NoArgs,
-	PreRun: func(cmd *cobra.Command, args []string) {
-		if name == nameDefault {
-			fmt.Fprintln(os.Stderr, "warning: no application name given, using default 'application'")
-		}
-	},
+	//Run: func(cmd *cobra.Command, args []string) {
+	//	if showVersion {
+	//		fmt.Printf("Version: v%s            © %s Jan Weidenhaupt", version, date[:4])
+	//	} else {
+	//		cmd.Help()
+	//	}
+	//},
+}
+
+func warningDefault(cmd *cobra.Command, args []string) {
+	if name == nameDefault {
+		fmt.Fprintln(os.Stderr, "warning: no application name given, using default 'application'")
+	}
 }
 
 var envCmd = &cobra.Command{
 	Use:   "env",
-	Short: "Sets all fetched properties as environment variables",
-	Long: `Fetches desired properties from the spring-cloud-config-server
-and sets them as local environment variables.
-
-By that the property key must converted to uppercase and divided by underscore, e.g:
-    spring.application.name="Senv" => SPRING_APPLICATION_NAME="Senv"
-In on the same commandline you can now get the corresponding values, e.g:
-	- in Windows:  echo %SPRING_APPLICATION_NAME%   //prints: Senv
-	- in Linux:	   echo $SPRING_APPLICATION_NAME    //prints: Senv`,
+	Short: "Fetches properties and sets them as environment variables",
+	Long: `Fetches properties from the spring-cloud-config-server
+and sets them as environment variables.
+By that the property-key will be converted to uppercase and divided by underscore`,
+	Example: `spring.application.name="Senv" => SPRING_APPLICATION_NAME="Senv"
+In the same cmd env you can now get the corresponding values, e.g:
+	- in Windows: echo %SPRING_APPLICATION_NAME%   //prints: Senv
+	- in Linux:   echo $SPRING_APPLICATION_NAME    //prints: Senv`,
+	PreRun: warningDefault,
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := senv.NewConfig(host, port, name, profiles, label, formatKey, formatVal)
 		if err := cfg.Fetch(json); err != nil {
@@ -67,13 +78,29 @@ In on the same commandline you can now get the corresponding values, e.g:
 }
 
 var fileCmd = &cobra.Command{
-	Use:   "file [file name]",
-	Short: "Receives a file to the current working directory",
-	Long: `Receives a desired file from the spring-cloud-config-server
-and put it in the current directory.`,
+	Use:   "file [filenames]",
+	Short: "Receives static file(s)",
+	Long: `Receives static file(s) from the spring-cloud-config-server`,
+	Args: cobra.MinimumNArgs(1),
+	PreRun: warningDefault,
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := senv.NewConfig(host, port, name, profiles, label, formatKey, formatVal)
-		return cfg.FetchFile(args[0], content)
+		if len(args) == 1 {
+			return cfg.FetchFile(args[0], content)
+		} else if len(args) > 1 {
+			isErr := false
+			for i, file := range args {
+				if err := cfg.FetchFile(file, content); err != nil {
+					isErr = true
+					fmt.Fprintf(os.Stderr, "error receiving %v. file %s: %s\n", i+1, file, err)
+				}
+			}
+			if isErr {
+				return fmt.Errorf("error while receiving files")
+			}
+		}
+		return nil
 	},
 }
 
@@ -85,8 +112,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&host, "host", hostDefault, "configserver host")
 	rootCmd.PersistentFlags().StringVar(&port, "port", portDefault, "configserver port")
 	rootCmd.PersistentFlags().StringVarP(&name, "name", "n", nameDefault, "spring.application.name")
-	rootCmd.PersistentFlags().StringSliceVarP(&profiles, "profiles", "p", profile_default, "spring.active.profiles")
+	rootCmd.PersistentFlags().StringSliceVarP(&profiles, "profiles", "p", profileDefault, "spring.active.profiles")
 	rootCmd.PersistentFlags().StringVarP(&label, "label", "l", labelDefault, "config-repo label to be used")
+	//rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "show version")
 	rootCmd.AddCommand(envCmd)
 	rootCmd.AddCommand(fileCmd)
 }
