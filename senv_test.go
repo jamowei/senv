@@ -51,7 +51,7 @@ var jsonData string = `{
         "ship-to.given": "${test.Name}",
         "ship-to.family": "Dumars",
         "ship-to.address.lines": "458 Walkman Dr.\nSuite #292\n",
-        "ship-to.address.city": "Royal Oak",
+        "ship-to.address.city": "${unknown:Royal Oak}",
         "ship-to.address.State": "MI",
         "ship-to.address.postal": 48046,
         "product[0].sku": "BL394D",
@@ -157,7 +157,7 @@ func TestConfig(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	conf := NewConfig(host, port, name, profiles, label, formatKey, formatVal)
+	conf := NewConfig(host, port, name, profiles, label)
 
 	err := conf.Fetch(true)
 	check(t, err)
@@ -171,10 +171,11 @@ func TestConfig(t *testing.T) {
 	err = conf.Process(true)
 	check(t, err)
 	props := conf.Properties
-	assertEqual(t, props["INVOICE"], "34843")
-	assertEqual(t, props["BILL-TO_GIVEN"], "Test")
-	assertEqual(t, props["SHIP-TO_ADDRESS_LINES"], "458 Walkman Dr. Suite #292 ")
-	assertEqual(t, props["TOTAL[1]"], "12342.23")
+	assertEqual(t, props["invoice"], "34843")
+	assertEqual(t, props["bill-to.given"], "Test")
+	assertEqual(t, props["ship-to.address.lines"], "458 Walkman Dr.\nSuite #292\n")
+	assertEqual(t, props["total[1]"], "12342.23")
+	assertEqual(t, props["ship-to.address.city"], "Royal Oak")
 
 	err = conf.FetchFile(file, true)
 	check(t, err)
@@ -192,9 +193,9 @@ func TestFailures(t *testing.T) {
 	defer stopServer()
 	time.Sleep(1 * time.Second)
 
-	cfg1 := NewConfig(host, port, badjson, profiles, label, formatKey, formatVal)
-	cfg2 := NewConfig(host, wrongport, name, profiles, label, formatKey, formatVal)
-	cfg3 := NewConfig(host, port, badprops, profiles, label, formatKey, formatVal)
+	cfg1 := NewConfig(host, port, badjson, profiles, label)
+	cfg2 := NewConfig(host, wrongport, name, profiles, label)
+	cfg3 := NewConfig(host, port, badprops, profiles, label)
 
 	err := cfg1.Fetch(false)
 	checkInverse(t, err)
@@ -234,14 +235,14 @@ func checkInverse(t *testing.T, err error) {
 	}
 }
 
-func formatKey(in string) (out string) {
-	out = strings.Replace(in, ".", "_", -1)
-	out = strings.ToUpper(out)
-	return
-}
-
-func formatVal(s string) (out string) {
-	out = strings.Replace(s, "\r\n", " ", -1)
-	out = strings.Replace(out, "\n", " ", -1)
-	return
-}
+//func formatKey(in string) (out string) {
+//	out = strings.Replace(in, ".", "_", -1)
+//	out = strings.ToUpper(out)
+//	return
+//}
+//
+//func formatVal(s string) (out string) {
+//	out = strings.Replace(s, "\r\n", " ", -1)
+//	out = strings.Replace(out, "\n", " ", -1)
+//	return
+//}

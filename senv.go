@@ -10,42 +10,38 @@ import (
 	"strings"
 )
 
-// ValReplacer replaces all variables given in the values
+//TODO: chage comment
+// Replacer replaces all variables given in the values
 // of the first map with the appropriate values of the specified key
 // and stores them in the second map.
 //
-// Example with StringValReplacer:
+// Example with SpringReplacer:
 //
 //   in := make(map[string]string)
 //   out := make(map[string]string)
 //   in["foo"] = "bar ${bar}"
 //   in["bar"] = "bars"
-//   repl := &StringValReplacer{"${", "}", true}
+//   repl := &SpringReplacer{"${", "}", true}
 //   repl.Replace(in, out)
 //   fmt.Println(out["foo"])   //prints: bar bars
-type ValReplacer interface {
-	Replace(map[string]string, map[string]string) error
+type Replacer interface {
+	Replace(str string, m map[string]string) (string, bool)
 }
 
 // Config hold the information which is needed to receive the
 // json data from the spring config server and parse and transform them correctly.
 type Config struct {
 	Host, Port, Name, Profile, Label string
-	KeyFormatter                     func(string) string
-	ValFormatter                     func(string) string
-	ValReplacer                      ValReplacer
+	Replacer                         Replacer
 	environment                      *environment
 	Properties                       map[string]string
 }
 
-// NewConfig returns a new Config as pointer value with a default ValReplacer for
+// NewConfig returns a new Config as pointer value with a default Replacer for
 // spring cloud config.
-func NewConfig(host string, port string, name string, profiles []string, label string,
-	keyFormatter func(string) string, valFormatter func(string) string) *Config {
+func NewConfig(host string, port string, name string, profiles []string, label string) *Config {
 	return &Config{host, port, name, strings.Join(profiles, ","), label,
-		keyFormatter,
-		valFormatter,
-		&StringValReplacer{"${", "}", true},
+		&SpringReplacer{"${", "}", ":"},
 		nil, nil}
 }
 
@@ -110,7 +106,7 @@ func (cfg *Config) FetchFile(filename string, print bool) error {
 	return nil
 }
 
-// Process use given ValReplacer and formatter functions to process
+// Process use given Replacer and formatter functions to process
 // the fetched json data and must be called after Fetch
 func (cfg *Config) Process(verbose bool) error {
 	env := cfg.environment
@@ -118,28 +114,32 @@ func (cfg *Config) Process(verbose bool) error {
 		//merge propertySources into one map
 		mergedProperties := mergeProps(env.PropertySources)
 
-		if cfg.ValReplacer != nil {
+		if cfg.Replacer != nil {
 
 			//replace variables
 			replacedProperties := make(map[string]string)
-			if err := cfg.ValReplacer.Replace(mergedProperties, replacedProperties); err != nil {
-				return err
+			for key, val := range mergedProperties {
+				nVal, exists := cfg.Replacer.Replace(val, mergedProperties)
+				if exists == false {
+					return fmt.Errorf("value for property ${%s} can't be found", key)
+				}
+				replacedProperties[key] = nVal
 			}
 			cfg.Properties = replacedProperties
 
-			//format keys & values
-			if cfg.KeyFormatter != nil && cfg.ValFormatter != nil {
-				formattedProps := make(map[string]string)
-				for key, val := range replacedProperties {
-					nKey := cfg.KeyFormatter(key)
-					nVal := cfg.ValFormatter(val)
-					formattedProps[nKey] = nVal
-					if verbose {
-						fmt.Println(nKey, "=", nVal)
-					}
-				}
-				cfg.Properties = formattedProps
-			}
+			////format keys & values
+			//if cfg.KeyFormatter != nil && cfg.ValFormatter != nil {
+			//	formattedProps := make(map[string]string)
+			//	for key, val := range replacedProperties {
+			//		nKey := cfg.KeyFormatter(key)
+			//		nVal := cfg.ValFormatter(val)
+			//		formattedProps[nKey] = nVal
+			//		if verbose {
+			//			fmt.Println(nKey, "=", nVal)
+			//		}
+			//	}
+			//	cfg.Properties = formattedProps
+			//}
 		}
 	}
 	return nil
@@ -159,43 +159,48 @@ func mergeProps(pSources []propertySource) (merged map[string]string) {
 	return
 }
 
-// StringValReplacer needs the opening and closing string
+// SpringReplacer needs the opening and closing string
 // for detecting a variables that must be replaced.
 // Optionally it can not fail on unknown variables which have no appropriate
 // key in the map.
-type StringValReplacer struct {
+type SpringReplacer struct {
 	Opener      string
 	Closer      string
-	FailOnError bool
+	Default		string
 }
+
+
+//func (rpl *SpringReplacer) Replace(in map[string]string, out map[string]string) error {
+//	var err error
+//	for key, val := range in {
+//		var nVal string
+//		nVal, err = rpl.replStrVar(val, in)
+//		if err != nil && rpl.FailOnError {
+//			return err
+//		}
+//		out[key] = nVal
+//	}
+//	return nil
+//}
 
 // Replace replaces all variables with the defined opening and
 // closing strings with the value of the key.
-func (rpl *StringValReplacer) Replace(in map[string]string, out map[string]string) error {
-	var err error
-	for key, val := range in {
-		var nVal string
-		nVal, err = rpl.replStrVar(val, in)
-		if err != nil && rpl.FailOnError {
-			return err
-		}
-		out[key] = nVal
-	}
-	return nil
-}
-
-func (rpl *StringValReplacer) replStrVar(str string, m map[string]string) (string, error) {
+func (rpl *SpringReplacer) Replace(str string, m map[string]string) (string, bool) {
 	var f, s int
 	f = strings.Index(str, rpl.Opener) + len(rpl.Opener)
 	for f-len(rpl.Opener) > -1 {
 		s = f + strings.Index(str[f:], rpl.Closer)
 		key := str[f:s]
-		if val, ok := m[key]; ok {
-			str = str[:f-len(rpl.Opener)] + val + str[s+len(rpl.Closer):]
-		} else {
-			return str, fmt.Errorf("value for property ${%s} can't be found", key)
+		val, ok := m[key]
+		if !ok {
+			if i := strings.Index(key, rpl.Default); i > 0 {
+				val = key[i+1:]
+			} else {
+				return str, false
+			}
 		}
+		str = str[:f-len(rpl.Opener)] + val + str[s+len(rpl.Closer):]
 		f = strings.Index(str, rpl.Opener) + len(rpl.Opener)
 	}
-	return str, nil
+	return str, true
 }
