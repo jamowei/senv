@@ -25,7 +25,7 @@ import (
 //   repl.Replace(in, out)
 //   fmt.Println(out["foo"])   //prints: bar bars
 type Replacer interface {
-	Replace(str string, m map[string]string) (string, bool)
+	Replace(str string, m map[string]string) (string, error)
 }
 
 // Config hold the information which is needed to receive the
@@ -47,10 +47,13 @@ func NewConfig(host string, port string, name string, profiles []string, label s
 
 // Fetch fetches the json data from the spring config server, see:
 // https://cloud.spring.io/spring-cloud-config/single/spring-cloud-config.html#_quick_start
-func (cfg *Config) Fetch(verbose bool) error {
+func (cfg *Config) Fetch(showJson bool, verbose bool) error {
 	env := &environment{}
 	url := fmt.Sprintf("http://%s:%s/%s/%s/%s", cfg.Host, cfg.Port, cfg.Name, cfg.Profile, cfg.Label)
-	fmt.Fprintln(os.Stderr, "Fetching config from server at:", url)
+
+	if verbose {
+		fmt.Fprintln(os.Stderr, "Fetching config from server at:", url)
+	}
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -63,10 +66,12 @@ func (cfg *Config) Fetch(verbose bool) error {
 		return err
 	}
 
-	fmt.Fprintf(os.Stderr, "Located environment: name=%#v, profiles=%v, label=%#v, version=%#v, state=%#v\n",
-		env.Name, env.Profiles, env.Label, env.Version, env.State)
-
 	if verbose {
+		fmt.Fprintf(os.Stderr, "Located environment: name=%#v, profiles=%v, label=%#v, version=%#v, state=%#v\n",
+			env.Name, env.Profiles, env.Label, env.Version, env.State)
+	}
+
+	if showJson {
 		jsonStr, _ := json.MarshalIndent(env, "", "    ")
 		fmt.Println(string(jsonStr))
 	}
@@ -77,9 +82,12 @@ func (cfg *Config) Fetch(verbose bool) error {
 
 // FetchFile download a file from the spring config server, see:
 // https://cloud.spring.io/spring-cloud-config/single/spring-cloud-config.html#_serving_plain_text
-func (cfg *Config) FetchFile(filename string, print bool) error {
+func (cfg *Config) FetchFile(filename string, printFile bool, verbose bool) error {
 	url := fmt.Sprintf("http://%s:%s/%s/%s/%s/%s", cfg.Host, cfg.Port, cfg.Name, cfg.Profile, cfg.Label, filename)
-	fmt.Fprintf(os.Stderr, "Fetching file \"%s\" from server at: %s\n", filename, url)
+
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Fetching file \"%s\" from server at: %s\n", filename, url)
+	}
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -87,7 +95,7 @@ func (cfg *Config) FetchFile(filename string, print bool) error {
 	}
 	defer resp.Body.Close()
 
-	if print {
+	if printFile {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(resp.Body)
 		fmt.Println(buf.String())
@@ -108,7 +116,7 @@ func (cfg *Config) FetchFile(filename string, print bool) error {
 
 // Process use given Replacer and formatter functions to process
 // the fetched json data and must be called after Fetch
-func (cfg *Config) Process(verbose bool) error {
+func (cfg *Config) Process() error {
 	env := cfg.environment
 	if env != nil && env.PropertySources != nil {
 		//merge propertySources into one map
@@ -119,9 +127,9 @@ func (cfg *Config) Process(verbose bool) error {
 			//replace variables
 			replacedProperties := make(map[string]string)
 			for key, val := range mergedProperties {
-				nVal, exists := cfg.Replacer.Replace(val, mergedProperties)
-				if exists == false {
-					return fmt.Errorf("value for property ${%s} can't be found", key)
+				nVal, err := cfg.Replacer.Replace(val, mergedProperties)
+				if err != nil {
+					return err
 				}
 				replacedProperties[key] = nVal
 			}
@@ -185,22 +193,30 @@ type SpringReplacer struct {
 
 // Replace replaces all variables with the defined opening and
 // closing strings with the value of the key.
-func (rpl *SpringReplacer) Replace(str string, m map[string]string) (string, bool) {
+func (rpl *SpringReplacer) Replace(str string, m map[string]string) (string, error) {
 	var f, s int
 	f = strings.Index(str, rpl.Opener) + len(rpl.Opener)
 	for f-len(rpl.Opener) > -1 {
 		s = f + strings.Index(str[f:], rpl.Closer)
 		key := str[f:s]
-		val, ok := m[key]
+		var val string
+		var ok, def bool
+		i := strings.Index(key, rpl.Default)
+		if i > 0 {
+			def = true
+			val, ok = m[key[:i]]
+		} else {
+			val, ok = m[key]
+		}
 		if !ok {
-			if i := strings.Index(key, rpl.Default); i > 0 {
+			if def {
 				val = key[i+1:]
 			} else {
-				return str, false
+				return str, fmt.Errorf("cannot find value for key %s in \"%s\"", key, str)
 			}
 		}
 		str = str[:f-len(rpl.Opener)] + val + str[s+len(rpl.Closer):]
 		f = strings.Index(str, rpl.Opener) + len(rpl.Opener)
 	}
-	return str, true
+	return str, nil
 }

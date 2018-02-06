@@ -159,7 +159,7 @@ func TestConfig(t *testing.T) {
 
 	conf := NewConfig(host, port, name, profiles, label)
 
-	err := conf.Fetch(true)
+	err := conf.Fetch(true, true)
 	check(t, err)
 	env := conf.environment
 	assertEqual(t, env.Name, name)
@@ -168,7 +168,7 @@ func TestConfig(t *testing.T) {
 	assertEqual(t, env.Profiles[1], profiles[1])
 	assertEqual(t, len(env.PropertySources), 2)
 
-	err = conf.Process(true)
+	err = conf.Process()
 	check(t, err)
 	props := conf.Properties
 	assertEqual(t, props["invoice"], "34843")
@@ -177,9 +177,9 @@ func TestConfig(t *testing.T) {
 	assertEqual(t, props["total[1]"], "12342.23")
 	assertEqual(t, props["ship-to.address.city"], "Royal Oak")
 
-	err = conf.FetchFile(file, true)
+	err = conf.FetchFile(file, true, true)
 	check(t, err)
-	err = conf.FetchFile(file, false)
+	err = conf.FetchFile(file, false, true)
 	check(t, err)
 	cnt, err := ioutil.ReadFile(file)
 	check(t, err)
@@ -197,18 +197,18 @@ func TestFailures(t *testing.T) {
 	cfg2 := NewConfig(host, wrongport, name, profiles, label)
 	cfg3 := NewConfig(host, port, badprops, profiles, label)
 
-	err := cfg1.Fetch(false)
+	err := cfg1.Fetch(false, true)
 	checkInverse(t, err)
 
-	err = cfg2.Fetch(false)
+	err = cfg2.Fetch(false, true)
 	checkInverse(t, err)
 
-	err = cfg2.FetchFile("test.txt", true)
+	err = cfg2.FetchFile("test.txt", true, true)
 	checkInverse(t, err)
 
-	err = cfg3.Fetch(false)
+	err = cfg3.Fetch(false, true)
 	check(t, err)
-	err = cfg3.Process(false)
+	err = cfg3.Process()
 	checkInverse(t, err)
 
 }

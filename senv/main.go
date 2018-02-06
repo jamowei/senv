@@ -14,13 +14,12 @@ const hostDefault, portDefault, nameDefault, labelDefault = "127.0.0.1", "8888",
 var profileDefault = []string{"default"}
 
 var version = "0.0.0"
-var date = "2017"
+var date = "2018"
 
-//TODO: add verbose option
 var (
-	host, port, name, label           string
-	profiles                          []string
-	addSystemEnv, json, envs, content bool
+	host, port, name, label          string
+	profiles                         []string
+	noSysEnv, json, verbose, content bool
 )
 
 func main() {
@@ -30,9 +29,9 @@ func main() {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "senv [command]",
-	Short: "A native config-client for the spring-cloud-config-server",
-	Version: "v"+version,
+	Use:     "senv [command]",
+	Short:   "A native config-client for the spring-cloud-config-server",
+	Version: "v" + version,
 	Long: fmt.Sprintf(
 		`v%s                             © %s Jan Weidenhaupt
 
@@ -55,33 +54,33 @@ and replaces the placeholder in the specified command.`,
 	Example: `on config-server:
   spring.application.name="Senv"
 Example call:
-	senv env echo ${spring.application.name:default}  //prints 'Senv' or when config-server not reachable 'default'`,
-	PreRun: warningDefault,
+  senv env echo ${spring.application.name:default}  //prints 'Senv' or when config-server not reachable 'default'`,
+	PreRun:       warningDefault,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := senv.NewConfig(host, port, name, profiles, label)
-		if err := cfg.Fetch(json); err != nil {
+		if err := cfg.Fetch(json, verbose); err != nil {
 			return err
 		}
-		if err := cfg.Process(envs); err != nil {
+		if err := cfg.Process(); err != nil {
 			return err
 		}
-		return runCommand(args, cfg.Properties, addSystemEnv)
+		return runCommand(args, cfg.Properties, noSysEnv)
 	},
 }
 
-func runCommand(args []string, props map[string]string, addSystemEnv bool) error {
+func runCommand(args []string, props map[string]string, noSysEnv bool) error {
 	if len(args) < 2 {
 		return fmt.Errorf("not enough args passed")
 	}
 	repl := senv.SpringReplacer{Opener: "${", Closer: "}", Default: ":"}
 	for i, arg := range args {
-		if val, ok := repl.Replace(arg, props); ok {
+		if val, err := repl.Replace(arg, props); err == nil {
 			args[i] = val
 		}
 	}
 	cmd := exec.Command(args[0], args[1:]...)
-	if addSystemEnv {
+	if !noSysEnv {
 		cmd.Env = os.Environ()
 	}
 	var sout, serr bytes.Buffer
@@ -97,20 +96,20 @@ func runCommand(args []string, props map[string]string, addSystemEnv bool) error
 }
 
 var fileCmd = &cobra.Command{
-	Use:   "file [filenames]",
-	Short: "Receives static file(s)",
-	Long: `Receives static file(s) from the spring-cloud-config-server`,
-	Args: cobra.MinimumNArgs(1),
-	PreRun: warningDefault,
+	Use:          "file [filenames]",
+	Short:        "Receives static file(s)",
+	Long:         `Receives static file(s) from the spring-cloud-config-server`,
+	Args:         cobra.MinimumNArgs(1),
+	PreRun:       warningDefault,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := senv.NewConfig(host, port, name, profiles, label)
 		if len(args) == 1 {
-			return cfg.FetchFile(args[0], content)
+			return cfg.FetchFile(args[0], content, verbose)
 		} else if len(args) > 1 {
 			isErr := false
 			for i, file := range args {
-				if err := cfg.FetchFile(file, content); err != nil {
+				if err := cfg.FetchFile(file, content, verbose); err != nil {
 					isErr = true
 					fmt.Fprintf(os.Stderr, "error receiving %v. file %s: %s\n", i+1, file, err)
 				}
@@ -124,10 +123,10 @@ var fileCmd = &cobra.Command{
 }
 
 func init() {
-	envCmd.PersistentFlags().BoolVarP(&addSystemEnv, "system-env", "s", true, "add system-environment variables")
-	envCmd.PersistentFlags().BoolVarP(&json, "json", "j", false, "print json")
-	envCmd.PersistentFlags().BoolVarP(&envs, "envs", "e", false, "print environment variables")
-	fileCmd.PersistentFlags().BoolVarP(&content, "content", "c", false, "print file content")
+	envCmd.PersistentFlags().BoolVarP(&noSysEnv, "nosysenv", "s", false, "start without system-environment variables")
+	envCmd.PersistentFlags().BoolVarP(&json, "json", "j", false, "print json to stdout")
+	envCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose")
+	fileCmd.PersistentFlags().BoolVarP(&content, "content", "c", false, "print file to stdout")
 	rootCmd.PersistentFlags().StringVar(&host, "host", hostDefault, "configserver host")
 	rootCmd.PersistentFlags().StringVar(&port, "port", portDefault, "configserver port")
 	rootCmd.PersistentFlags().StringVarP(&name, "name", "n", nameDefault, "spring.application.name")
@@ -148,8 +147,6 @@ func init() {
 //	}
 //	return nil
 //}
-
-
 
 //func formatKey(in string) (out string) {
 //	out = strings.Replace(in, ".", "_", -1)

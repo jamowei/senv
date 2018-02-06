@@ -5,6 +5,7 @@ go:
 before_install:
   - go get github.com/mattn/goveralls
   - go get github.com/inconshreveable/mousetrap
+  - go get github.com/spf13/pflag
 script:
   - $HOME/gopath/bin/goveralls -service=travis-ci
 after_success:
