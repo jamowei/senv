@@ -135,27 +135,3 @@ func init() {
 	rootCmd.AddCommand(envCmd)
 	rootCmd.AddCommand(fileCmd)
 }
-
-//func setEnvVars(props map[string]string, override bool) error {
-//	for key, nVal := range props {
-//		if oVal, exists := os.LookupEnv(key); exists && !override {
-//			return fmt.Errorf("environment variable already exists: %s=%s", key, oVal)
-//		}
-//		if err := os.Setenv(key, nVal); err != nil {
-//			return err
-//		}
-//	}
-//	return nil
-//}
-
-//func formatKey(in string) (out string) {
-//	out = strings.Replace(in, ".", "_", -1)
-//	out = strings.ToUpper(out)
-//	return
-//}
-//
-//func formatVal(s string) (out string) {
-//	out = strings.Replace(s, "\r\n", " ", -1)
-//	out = strings.Replace(out, "\n", " ", -1)
-//	return
-//}

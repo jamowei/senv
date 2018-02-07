@@ -10,20 +10,9 @@ import (
 	"strings"
 )
 
-//TODO: chage comment
-// Replacer replaces all variables given in the values
-// of the first map with the appropriate values of the specified key
-// and stores them in the second map.
-//
-// Example with SpringReplacer:
-//
-//   in := make(map[string]string)
-//   out := make(map[string]string)
-//   in["foo"] = "bar ${bar}"
-//   in["bar"] = "bars"
-//   repl := &SpringReplacer{"${", "}", true}
-//   repl.Replace(in, out)
-//   fmt.Println(out["foo"])   //prints: bar bars
+// Replacer replaces all variables given in the first string
+// with the appropriate values of the specified key in the second map
+// and give it replaced back or error otherwise.
 type Replacer interface {
 	Replace(str string, m map[string]string) (string, error)
 }
@@ -134,20 +123,6 @@ func (cfg *Config) Process() error {
 				replacedProperties[key] = nVal
 			}
 			cfg.Properties = replacedProperties
-
-			////format keys & values
-			//if cfg.KeyFormatter != nil && cfg.ValFormatter != nil {
-			//	formattedProps := make(map[string]string)
-			//	for key, val := range replacedProperties {
-			//		nKey := cfg.KeyFormatter(key)
-			//		nVal := cfg.ValFormatter(val)
-			//		formattedProps[nKey] = nVal
-			//		if verbose {
-			//			fmt.Println(nKey, "=", nVal)
-			//		}
-			//	}
-			//	cfg.Properties = formattedProps
-			//}
 		}
 	}
 	return nil
@@ -169,30 +144,15 @@ func mergeProps(pSources []propertySource) (merged map[string]string) {
 
 // SpringReplacer needs the opening and closing string
 // for detecting a variables that must be replaced.
-// Optionally it can not fail on unknown variables which have no appropriate
-// key in the map.
 type SpringReplacer struct {
 	Opener      string
 	Closer      string
 	Default		string
 }
 
-
-//func (rpl *SpringReplacer) Replace(in map[string]string, out map[string]string) error {
-//	var err error
-//	for key, val := range in {
-//		var nVal string
-//		nVal, err = rpl.replStrVar(val, in)
-//		if err != nil && rpl.FailOnError {
-//			return err
-//		}
-//		out[key] = nVal
-//	}
-//	return nil
-//}
-
 // Replace replaces all variables with the defined opening and
-// closing strings with the value of the key.
+// closing strings with and default separator the value of the
+// key or when available with the default value.
 func (rpl *SpringReplacer) Replace(str string, m map[string]string) (string, error) {
 	var f, s int
 	f = strings.Index(str, rpl.Opener) + len(rpl.Opener)
