@@ -13,21 +13,21 @@ import (
 )
 
 const (
-	host      string = "127.0.0.1"
-	port      string = "9999"
-	wrongport string = "8888"
-	name      string = "test"
-	badjson   string = "badjson"
-	badprops  string = "badprops"
-	file      string = "test.txt"
-	label     string = "master"
+	host      = "127.0.0.1"
+	port      = "9999"
+	wrongport = "8888"
+	name      = "test"
+	badjson   = "badjson"
+	badprops  = "badprops"
+	file      = "test.txt"
+	label     = "master"
 )
 
-var profiles []string = []string{"dev", "prod"}
+var profiles = []string{"dev", "prod"}
 
-var running bool = false
+var running = false
 
-var jsonData string = `{
+var jsonData = `{
   "Name": "test",
   "Profiles": [
     "dev",
@@ -82,7 +82,7 @@ var jsonData string = `{
   ]
 }`
 
-var jsonDataWrong string = `{
+var jsonDataWrong = `{
   "Name": "test",
   "Profiles": [
     "dev",
@@ -104,7 +104,7 @@ var jsonDataWrong string = `{
   ]
 }`
 
-var plainData string = "this is a test!"
+var plainData = "this is a test!"
 
 var server *http.Server
 
@@ -234,15 +234,3 @@ func checkInverse(t *testing.T, err error) {
 		t.Fatal(t.Name(), "should fail, but didnt")
 	}
 }
-
-//func formatKey(in string) (out string) {
-//	out = strings.Replace(in, ".", "_", -1)
-//	out = strings.ToUpper(out)
-//	return
-//}
-//
-//func formatVal(s string) (out string) {
-//	out = strings.Replace(s, "\r\n", " ", -1)
-//	out = strings.Replace(out, "\n", " ", -1)
-//	return
-//}

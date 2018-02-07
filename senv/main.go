@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"bytes"
+	"syscall"
 )
 
 const hostDefault, portDefault, nameDefault, labelDefault = "127.0.0.1", "8888", "application", "master"
@@ -22,9 +23,13 @@ var (
 	noSysEnv, json, verbose, content bool
 )
 
+var errExitCode = 0
+
 func main() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
+	} else if errExitCode > 0 {
+		os.Exit(errExitCode)
 	}
 }
 
@@ -70,9 +75,6 @@ Example call:
 }
 
 func runCommand(args []string, props map[string]string, noSysEnv bool) error {
-	if len(args) < 2 {
-		return fmt.Errorf("not enough args passed")
-	}
 	repl := senv.SpringReplacer{Opener: "${", Closer: "}", Default: ":"}
 	for i, arg := range args {
 		if val, err := repl.Replace(arg, props); err == nil {
@@ -83,16 +85,38 @@ func runCommand(args []string, props map[string]string, noSysEnv bool) error {
 	if !noSysEnv {
 		cmd.Env = os.Environ()
 	}
-	var sout, serr bytes.Buffer
-	cmd.Stdout = &sout
-	cmd.Stderr = &serr
+	var buffSout, buffSerr bytes.Buffer
+	cmd.Stdout = &buffSout
+	cmd.Stderr = &buffSerr
 	err := cmd.Run()
+
+	serr := buffSerr.String()
+	sout := buffSout.String()
+
 	if err != nil {
-		fmt.Println(serr.String())
+		// try to get the exit code
+		if exitError, ok := err.(*exec.ExitError); ok {
+			ws := exitError.Sys().(syscall.WaitStatus)
+			errExitCode = ws.ExitStatus()
+		} else {
+			// This will happen (in OSX) if `name` is not available in $PATH,
+			// in this situation, exit code could not be get, and stderr will be
+			// empty string very likely, so we use the default fail code, and format err
+			// to string and set to stderr
+			if serr == "" {
+				serr = err.Error()
+			}
+		}
 	} else {
-		fmt.Println(sout.String())
+		// success, errExitCode should be 0 if go is ok
+		ws := cmd.ProcessState.Sys().(syscall.WaitStatus)
+		errExitCode = ws.ExitStatus()
 	}
-	return err
+
+	fmt.Fprintln(os.Stderr, serr)
+	fmt.Fprintln(os.Stdout, sout)
+
+	return nil
 }
 
 var fileCmd = &cobra.Command{
