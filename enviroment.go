@@ -35,8 +35,6 @@ func (src *source) UnmarshalJSON(b []byte) error {
 			src.content[k] = val
 		case bool:
 			src.content[k] = strconv.FormatBool(val)
-		case int:
-			src.content[k] = strconv.Itoa(val)
 		case float64:
 			src.content[k] = strconv.FormatFloat(float64(val), 'f', -1, 64)
 		}
