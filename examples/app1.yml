@@ -1,0 +1,9 @@
+name: app1
+profiles: ["dev", "db"]
+# label: ... -> default: "default"
+exec: "app1 -c ${foo:foo} -f config.properties"
+#  workdir: ... -> default: current dir
+files: ["config.properties"]
+#  path: ... -> default: current dir
+#verbose: false
+#dry_run: false

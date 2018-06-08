@@ -6,11 +6,11 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"os/exec"
-	"bytes"
 	"syscall"
+	"golang.org/x/text/encoding/charmap"
 )
 
-const hostDefault, portDefault, nameDefault, labelDefault = "127.0.0.1", "8888", "application", "master"
+const hostDefault, portDefault, nameDefault,  labelDefault = "127.0.0.1", "8888", "application", "master"
 
 var profileDefault = []string{"default"}
 
@@ -18,7 +18,7 @@ var version = "0.0.0"
 var date = "2018"
 
 var (
-	host, port, name, label          string
+	host, 	port, name, label          string
 	profiles                         []string
 	noSysEnv, json, verbose, content bool
 )
@@ -47,7 +47,7 @@ spring-cloud-config-server written in Go`, version, date[:4]),
 
 func warningDefault(_ *cobra.Command, _ []string) {
 	if name == nameDefault {
-		fmt.Fprintln(os.Stderr, "warning: no application name given, using default 'application'")
+		fmt.Fprintln(os.Stderr, "Warning: no application name given, using default 'application'")
 	}
 }
 
@@ -63,6 +63,11 @@ Example call:
 	PreRun:       warningDefault,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+
+		if len(args) < 2 {
+			return fmt.Errorf("not enough args passed")
+		}
+
 		cfg := senv.NewConfig(host, port, name, profiles, label)
 		if err := cfg.Fetch(json, verbose); err != nil {
 			return err
@@ -85,38 +90,51 @@ func runCommand(args []string, props map[string]string, noSysEnv bool) error {
 	if !noSysEnv {
 		cmd.Env = os.Environ()
 	}
-	var buffSout, buffSerr bytes.Buffer
-	cmd.Stdout = &buffSout
-	cmd.Stderr = &buffSerr
-	err := cmd.Run()
+	//var buffSout, buffSerr bytes.Buffer
+	//cmd.Stdout = &buffSout
+	//cmd.Stderr = &buffSerr
+	msg, err := cmd.CombinedOutput()
 
-	serr := buffSerr.String()
-	sout := buffSout.String()
+	//serr := buffSerr.String()
+	//sout := buffSout.String()
 
+	// try to get the exit code
 	if err != nil {
-		// try to get the exit code
 		if exitError, ok := err.(*exec.ExitError); ok {
 			ws := exitError.Sys().(syscall.WaitStatus)
 			errExitCode = ws.ExitStatus()
-		} else {
-			// This will happen (in OSX) if `name` is not available in $PATH,
-			// in this situation, exit code could not be get, and stderr will be
-			// empty string very likely, so we use the default fail code, and format err
-			// to string and set to stderr
-			if serr == "" {
-				serr = err.Error()
-			}
 		}
 	} else {
-		// success, errExitCode should be 0 if go is ok
 		ws := cmd.ProcessState.Sys().(syscall.WaitStatus)
 		errExitCode = ws.ExitStatus()
 	}
 
-	fmt.Fprintln(os.Stderr, serr)
-	fmt.Fprintln(os.Stdout, sout)
+	//var sout string
+	//if !utf8.Valid(msg) {
+	//	sout = DecodeWindows1250(msg)
+	//} else {
+	//	sout = string(msg)
+	//}
+	//TODO: get äöü working correctly
+	//compare := []byte{'ä', 'ö', 'ü'}
+	//fmt.Print(compare)
+	fmt.Print(string(msg))
+
+	//if serr != "" {
+	//	fmt.Fprintln(os.Stderr, serr)
+	//}
+	//if sout != "" {
+	//	fmt.Fprintln(os.Stdout, sout)
+	//}
 
 	return nil
+}
+
+
+func DecodeWindows(enc []byte) string {
+	dec := charmap.Windows1252.NewDecoder()
+	out, _ := dec.Bytes(enc)
+	return string(out)
 }
 
 var fileCmd = &cobra.Command{
